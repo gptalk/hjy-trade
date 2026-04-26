@@ -5,6 +5,28 @@ import StockSelector from '../components/StockSelector';
 import StrategyEditor from '../components/StrategyEditor';
 import BacktestResult from '../components/BacktestResult';
 
+const PERIODS = [
+  { value: '1', label: '1分' },
+  { value: '5', label: '5分' },
+  { value: '15', label: '15分' },
+  { value: '30', label: '30分' },
+  { value: '60', label: '60分' },
+  { value: 'D', label: '日K' },
+  { value: 'W', label: '周K' },
+  { value: 'M', label: '月K' },
+];
+
+const getDefaultEndDate = () => {
+  const today = new Date();
+  return today.toISOString().split('T')[0];
+};
+
+const getDefaultStartDate = () => {
+  const oneYearAgo = new Date();
+  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+  return oneYearAgo.toISOString().split('T')[0];
+};
+
 const HomePage = () => {
   const [stock, setStock] = useState({ code: '000001', name: '平安银行' });
   const [klineData, setKlineData] = useState([]);
@@ -14,10 +36,15 @@ const HomePage = () => {
   const [backtestResult, setBacktestResult] = useState(null);
   const [showStrategyEditor, setShowStrategyEditor] = useState(false);
 
-  const loadKlineData = async (code) => {
+  // 查询条件状态
+  const [period, setPeriod] = useState('D');
+  const [startDate, setStartDate] = useState(getDefaultStartDate());
+  const [endDate, setEndDate] = useState(getDefaultEndDate());
+
+  const loadKlineData = async (code, start, end) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/stock/kline/${code}?start=2024-01-01&end=2024-12-31`);
+      const res = await fetch(`/api/stock/kline/${code}?start=${start}&end=${end}`);
       const data = await res.json();
       setKlineData(data);
     } catch (err) {
@@ -28,7 +55,7 @@ const HomePage = () => {
   };
 
   useEffect(() => {
-    loadKlineData(stock.code);
+    loadKlineData(stock.code, startDate, endDate);
   }, [stock.code]);
 
   const handleStockSelect = (s) => {
@@ -37,12 +64,21 @@ const HomePage = () => {
     }
   };
 
+  const handleQuery = () => {
+    loadKlineData(stock.code, startDate, endDate);
+  };
+
   const handleBacktest = async () => {
     try {
       const res = await fetch('/api/backtest/run', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: stock.code, strategy }),
+        body: JSON.stringify({
+          code: stock.code,
+          strategy,
+          start_date: startDate,
+          end_date: endDate
+        }),
       });
       const result = await res.json();
       setBacktestResult(result);
@@ -84,8 +120,57 @@ const HomePage = () => {
 
       {backtestResult && <BacktestResult result={backtestResult} />}
 
-      <div className="mb-4 flex gap-4 items-center">
-        <StockSelector onSelect={handleStockSelect} />
+      {/* 查询条件区域 */}
+      <div className="mb-4 p-4 bg-gray-50 rounded flex flex-wrap gap-4 items-end">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">股票</label>
+          <StockSelector onSelect={handleStockSelect} />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">周期</label>
+          <select
+            value={period}
+            onChange={(e) => setPeriod(e.target.value)}
+            className="px-3 py-2 border rounded"
+          >
+            {PERIODS.map((p) => (
+              <option key={p.value} value={p.value}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">开始日期</label>
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="px-3 py-2 border rounded"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">结束日期</label>
+          <input
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="px-3 py-2 border rounded"
+          />
+        </div>
+
+        <button
+          onClick={handleQuery}
+          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+        >
+          查询
+        </button>
+      </div>
+
+      <div className="mb-4">
         <IndicatorPanel selected={indicators} onChange={setIndicators} />
       </div>
 
