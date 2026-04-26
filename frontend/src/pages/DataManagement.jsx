@@ -26,6 +26,10 @@ const DataManagement = () => {
   const loadStats = async () => {
     try {
       const res = await fetch('/api/data/stats');
+      if (!res.ok) {
+        const err = await res.text();
+        throw new Error(err || `HTTP ${res.status}`);
+      }
       const data = await res.json();
       setStats(data);
     } catch (err) {
@@ -37,6 +41,10 @@ const DataManagement = () => {
     setLoading(true);
     try {
       const res = await fetch('/api/data/list');
+      if (!res.ok) {
+        const err = await res.text();
+        throw new Error(err || `HTTP ${res.status}`);
+      }
       const data = await res.json();
       setCacheList(data);
     } catch (err) {
@@ -64,6 +72,10 @@ const DataManagement = () => {
           strategy: syncStrategy
         }),
       });
+      if (!res.ok) {
+        const err = await res.text();
+        throw new Error(err || `HTTP ${res.status}`);
+      }
       const data = await res.json();
 
       if (data.error) {
@@ -86,6 +98,10 @@ const DataManagement = () => {
 
     try {
       const res = await fetch(`/api/data/delete?code=${code}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const err = await res.text();
+        throw new Error(err || `HTTP ${res.status}`);
+      }
       const data = await res.json();
       if (data.error) {
         alert(data.error);
@@ -104,6 +120,10 @@ const DataManagement = () => {
 
     try {
       const res = await fetch(`/api/data/batch-delete?days=${days}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const err = await res.text();
+        throw new Error(err || `HTTP ${res.status}`);
+      }
       const data = await res.json();
       alert(`已删除 ${data.deleted_count} 只股票的缓存数据`);
       loadStats();
@@ -126,7 +146,7 @@ const DataManagement = () => {
           </div>
           <div className="bg-gray-800 rounded-lg p-4">
             <div className="text-gray-400 text-sm">数据记录</div>
-            <div className="text-2xl font-bold">{stats.record_count?.toLocaleString()}</div>
+            <div className="text-2xl font-bold">{stats.record_count?.toLocaleString() ?? 0}</div>
           </div>
           <div className="bg-gray-800 rounded-lg p-4">
             <div className="text-gray-400 text-sm">数据库大小</div>
@@ -224,7 +244,7 @@ const DataManagement = () => {
                 </thead>
                 <tbody>
                   {cacheList.map(stock => (
-                    <tr key={stock.code} className="border-t border-gray-700 hover:bg-gray-750">
+                    <tr key={stock.code} className="border-t border-gray-700 hover:bg-gray-700">
                       <td className="px-4 py-2 text-white">{stock.code}</td>
                       <td className="px-4 py-2 text-gray-300">{stock.name || '-'}</td>
                       <td className="px-4 py-2 text-gray-300">{stock.start_date || '-'}</td>
