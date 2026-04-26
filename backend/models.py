@@ -95,7 +95,7 @@ def init_db():
     # 为 klines 表添加 last_update 字段（如果不存在）
     try:
         cursor.execute('ALTER TABLE klines ADD COLUMN last_update TEXT DEFAULT CURRENT_TIMESTAMP')
-    except:
+    except sqlite3.OperationalError:
         pass  # 列已存在
 
     # 创建索引加速查询
