@@ -6,6 +6,7 @@ from routes.strategy import bp as strategy_bp
 from routes.backtest import bp as backtest_bp
 from routes.watchlist import bp as watchlist_bp
 from routes.diagnosis import bp as diagnosis_bp
+from routes.radar import bp as radar_bp
 
 def create_app():
     app = Flask(__name__)
@@ -16,6 +17,7 @@ def create_app():
     app.register_blueprint(backtest_bp)
     app.register_blueprint(watchlist_bp)
     app.register_blueprint(diagnosis_bp)
+    app.register_blueprint(radar_bp)
 
     return app
 

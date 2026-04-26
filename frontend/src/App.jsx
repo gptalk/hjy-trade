@@ -3,6 +3,7 @@ import HomePage from './pages/HomePage';
 import WatchlistPage from './pages/WatchlistPage';
 import BacktestRecords from './pages/BacktestRecords';
 import DiagnosisPage from './pages/DiagnosisPage';
+import StrategyRadar from './pages/StrategyRadar';
 
 function App() {
   const [page, setPage] = useState('home');
@@ -47,6 +48,7 @@ function App() {
         {page === 'home' && <HomePage />}
         {page === 'watchlist' && <WatchlistPage />}
         {page === 'records' && <BacktestRecords />}
+        {page === 'radar' && <StrategyRadar />}
         {page === 'diagnosis' && <DiagnosisPage />}
       </main>
     </div>
