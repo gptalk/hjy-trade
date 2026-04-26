@@ -4,6 +4,7 @@ import WatchlistPage from './pages/WatchlistPage';
 import BacktestRecords from './pages/BacktestRecords';
 import DiagnosisPage from './pages/DiagnosisPage';
 import StrategyRadar from './pages/StrategyRadar';
+import DataManagement from './pages/DataManagement';
 
 function App() {
   const [page, setPage] = useState('home');
@@ -42,6 +43,12 @@ function App() {
           >
             AI问诊
           </button>
+          <button
+            onClick={() => setPage('data-management')}
+            className={page === 'data-management' ? 'font-bold' : ''}
+          >
+            数据管理
+          </button>
         </div>
       </nav>
       <main>
@@ -50,6 +57,7 @@ function App() {
         {page === 'records' && <BacktestRecords />}
         {page === 'radar' && <StrategyRadar />}
         {page === 'diagnosis' && <DiagnosisPage />}
+        {page === 'data-management' && <DataManagement />}
       </main>
     </div>
   );
