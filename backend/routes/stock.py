@@ -69,13 +69,20 @@ def fetch_kline_data(code, start='2020-01-01', end='2024-12-31'):
 
         klines = []
         for idx, row in df.iterrows():
+            # 处理列名大小写
+            open_val = float(row.get('Open') or row.get('open', 0))
+            high_val = float(row.get('High') or row.get('high', 0))
+            low_val = float(row.get('Low') or row.get('low', 0))
+            close_val = float(row.get('Close') or row.get('close', 0))
+            volume_val = int(row.get('Volume') or row.get('volume', 0))
+
             klines.append({
                 'date': idx.strftime('%Y-%m-%d'),
-                'open': float(row['Open']),
-                'high': float(row['High']),
-                'low': float(row['Low']),
-                'close': float(row['Close']),
-                'volume': int(row['Volume']),
+                'open': open_val,
+                'high': high_val,
+                'low': low_val,
+                'close': close_val,
+                'volume': volume_val,
                 'MA5': float(row['MA5']) if pd.notna(row['MA5']) else None,
                 'MA10': float(row['MA10']) if pd.notna(row['MA10']) else None,
                 'MA20': float(row['MA20']) if pd.notna(row['MA20']) else None,
