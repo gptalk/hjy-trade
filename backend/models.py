@@ -66,6 +66,34 @@ def init_db():
         )
     ''')
 
+    # 市场表
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS markets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            code TEXT UNIQUE NOT NULL,
+            name TEXT NOT NULL,
+            market_type TEXT DEFAULT 'A股',
+            description TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    # 股票详细信息表
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS stock_info (
+            code TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            market TEXT DEFAULT 'A股',
+            industry TEXT,
+            listing_date TEXT,
+            total_shares REAL,
+            float_shares REAL,
+            mainBusiness TEXT,
+            issuedShares TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS klines (
             id INTEGER PRIMARY KEY AUTOINCREMENT,

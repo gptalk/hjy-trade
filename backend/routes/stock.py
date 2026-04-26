@@ -214,3 +214,164 @@ def get_kline(code):
         return jsonify(klines)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+# ============== 市场管理 API ==============
+
+@bp.route('/markets', methods=['GET'])
+def get_markets():
+    """获取市场列表"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    markets = cursor.execute('SELECT * FROM markets ORDER BY code').fetchall()
+    conn.close()
+
+    if not markets:
+        # 返回默认A股市场
+        return jsonify([{'code': 'A', 'name': 'A股', 'market_type': 'A股', 'description': '上海和深圳证券交易所'}])
+    return jsonify([dict(m) for m in markets])
+
+@bp.route('/markets', methods=['POST'])
+def add_market():
+    """添加市场"""
+    data = request.json
+    code = data.get('code')
+    name = data.get('name')
+    market_type = data.get('market_type', 'A股')
+    description = data.get('description', '')
+
+    if not code or not name:
+        return jsonify({'error': '市场代码和名称不能为空'}), 400
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            'INSERT INTO markets (code, name, market_type, description) VALUES (?, ?, ?, ?)',
+            (code, name, market_type, description)
+        )
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@bp.route('/stocks', methods=['GET'])
+def get_stocks():
+    """获取股票列表"""
+    market = request.args.get('market', 'A股')
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # 优先从 stock_info 表获取
+    stocks = cursor.execute(
+        'SELECT * FROM stock_info WHERE market = ? ORDER BY code',
+        (market,)
+    ).fetchall()
+
+    # 如果 stock_info 为空，使用预置列表
+    if not stocks:
+        stocks = [s for s in A_STOCK_LIST if market == 'A股']
+        return jsonify(stocks)
+
+    conn.close()
+    return jsonify([dict(s) for s in stocks])
+
+@bp.route('/stocks/<code>', methods=['GET'])
+def get_stock_info(code):
+    """获取股票详细信息"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    stock = cursor.execute('SELECT * FROM stock_info WHERE code = ?', (code,)).fetchone()
+
+    if not stock:
+        # 尝试从预置列表获取
+        for s in A_STOCK_LIST:
+            if s['code'] == code:
+                conn.close()
+                return jsonify({'code': s['code'], 'name': s['name'], 'market': 'A股'})
+        conn.close()
+        return jsonify({'error': '股票不存在'}), 404
+
+    conn.close()
+    return jsonify(dict(stock))
+
+@bp.route('/stocks', methods=['POST'])
+def add_stock():
+    """添加/更新股票信息"""
+    data = request.json
+    code = data.get('code')
+    name = data.get('name')
+    market = data.get('market', 'A股')
+    industry = data.get('industry')
+    listing_date = data.get('listing_date')
+    total_shares = data.get('total_shares')
+    float_shares = data.get('float_shares')
+    mainBusiness = data.get('mainBusiness')
+
+    if not code or not name:
+        return jsonify({'error': '股票代码和名称不能为空'}), 400
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT OR REPLACE INTO stock_info
+            (code, name, market, industry, listing_date, total_shares, float_shares, mainBusiness)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (code, name, market, industry, listing_date, total_shares, float_shares, mainBusiness))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@bp.route('/stocks/<code>', methods=['DELETE'])
+def delete_stock(code):
+    """删除股票"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM stock_info WHERE code = ?', (code,))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@bp.route('/stocks/batch', methods=['POST'])
+def batch_add_stocks():
+    """批量添加股票"""
+    data = request.json
+    stocks = data.get('stocks', [])
+
+    if not stocks:
+        return jsonify({'error': '股票列表不能为空'}), 400
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        for stock in stocks:
+            cursor.execute('''
+                INSERT OR REPLACE INTO stock_info
+                (code, name, market, industry, listing_date, total_shares, float_shares, mainBusiness)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                stock.get('code'),
+                stock.get('name'),
+                stock.get('market', 'A股'),
+                stock.get('industry'),
+                stock.get('listing_date'),
+                stock.get('total_shares'),
+                stock.get('float_shares'),
+                stock.get('mainBusiness')
+            ))
+
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True, 'count': len(stocks)})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
