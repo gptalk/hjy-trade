@@ -38,12 +38,12 @@ const KLineChart = ({ data = [], indicators = [] }) => {
         { left: '10%', right: '8%', top: '65%', height: '15%' }
       ],
       xAxis: [
-        { type: 'category', data: dates, gridIndex: 0, boundaryGap: false },
-        { type: 'category', data: dates, gridIndex: 1 }
+        { type: 'category', data: dates, gridIndex: 0, boundaryGap: false, splitLine: { show: false } },
+        { type: 'category', data: dates, gridIndex: 1, splitLine: { show: false } }
       ],
       yAxis: [
-        { scale: true, gridIndex: 0 },
-        { scale: true, gridIndex: 1 }
+        { scale: true, gridIndex: 0, splitLine: { lineStyle: { color: '#444' } } },
+        { scale: true, gridIndex: 1, splitLine: { lineStyle: { color: '#444' } } }
       ],
       series: [
         {
@@ -109,7 +109,7 @@ const KLineChart = ({ data = [], indicators = [] }) => {
     };
   }, [data, indicators]);
 
-  return <div ref={chartRef} style={{ width: '100%', height: '600px' }} />;
+  return <div ref={chartRef} style={{ width: '100%', height: '600px', backgroundColor: '#1a1a2e' }} />;
 };
 
 export default KLineChart;
