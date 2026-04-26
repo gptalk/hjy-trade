@@ -13,6 +13,17 @@ for k in list(os.environ.keys()):
 
 bp = Blueprint('stock', __name__, url_prefix='/api/stock')
 
+
+def add_indicators_to_kline(kline, row):
+    """将技术指标添加到kline字典"""
+    indicator_cols = ['MA5', 'MA10', 'MA20', 'MA30', 'EMA12', 'EMA26',
+                      'MACD', 'MACD_signal', 'RSI6', 'RSI12',
+                      'BOLL_mid', 'BOLL_upper', 'BOLL_lower']
+    for col in indicator_cols:
+        if col in row and row[col] is not None:
+            kline[col] = float(row[col]) if pd.notna(row[col]) else None
+    return kline
+
 # 预置的A股股票列表(常用)
 A_STOCK_LIST = [
     {'code': '000001', 'name': '平安银行'},
@@ -105,19 +116,7 @@ def fetch_kline_data(code, start='2020-01-01', end='2024-12-31'):
 
                     # Update klines with indicators
                     for i, row in df_cache.iterrows():
-                        klines[i]['MA5'] = float(row['MA5']) if pd.notna(row['MA5']) else None
-                        klines[i]['MA10'] = float(row['MA10']) if pd.notna(row['MA10']) else None
-                        klines[i]['MA20'] = float(row['MA20']) if pd.notna(row['MA20']) else None
-                        klines[i]['MA30'] = float(row['MA30']) if pd.notna(row['MA30']) else None
-                        klines[i]['EMA12'] = float(row['EMA12']) if pd.notna(row['EMA12']) else None
-                        klines[i]['EMA26'] = float(row['EMA26']) if pd.notna(row['EMA26']) else None
-                        klines[i]['MACD'] = float(row['MACD']) if pd.notna(row['MACD']) else None
-                        klines[i]['MACD_signal'] = float(row['MACD_signal']) if pd.notna(row['MACD_signal']) else None
-                        klines[i]['RSI6'] = float(row['RSI6']) if pd.notna(row['RSI6']) else None
-                        klines[i]['RSI12'] = float(row['RSI12']) if pd.notna(row['RSI12']) else None
-                        klines[i]['BOLL_mid'] = float(row['BOLL_mid']) if pd.notna(row['BOLL_mid']) else None
-                        klines[i]['BOLL_upper'] = float(row['BOLL_upper']) if pd.notna(row['BOLL_upper']) else None
-                        klines[i]['BOLL_lower'] = float(row['BOLL_lower']) if pd.notna(row['BOLL_lower']) else None
+                        klines[i] = add_indicators_to_kline(klines[i], row)
 
                     return klines
 
@@ -156,10 +155,7 @@ def fetch_kline_data(code, start='2020-01-01', end='2024-12-31'):
             }
 
             # 添加指标
-            for col in ['MA5', 'MA10', 'MA20', 'MA30', 'EMA12', 'EMA26', 'MACD', 'MACD_signal', 'RSI6', 'RSI12', 'BOLL_mid', 'BOLL_upper', 'BOLL_lower']:
-                if col in df.columns:
-                    val = row.get(col)
-                    kline[col] = float(val) if pd.notna(val) else None
+            kline = add_indicators_to_kline(kline, row)
 
             klines.append(kline)
 
