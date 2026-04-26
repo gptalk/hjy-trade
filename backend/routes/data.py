@@ -2,7 +2,6 @@ from flask import Blueprint, jsonify, request
 import os
 import sqlite3
 from datetime import datetime, timedelta
-import pandas as pd
 import sys
 sys.path.append('..')
 from models import get_db_connection
@@ -13,15 +12,13 @@ bp = Blueprint('data', __name__, url_prefix='/api/data')
 @bp.route('/stats', methods=['GET'])
 def get_stats():
     """获取数据库统计信息"""
+    conn = get_db_connection()
     try:
-        conn = get_db_connection()
         cursor = conn.cursor()
 
         stock_count = cursor.execute('SELECT COUNT(*) FROM stock_cache').fetchone()[0]
         record_count = cursor.execute('SELECT COUNT(*) FROM klines').fetchone()[0]
         last_update = cursor.execute('SELECT MAX(last_update) FROM stock_cache').fetchone()[0] or 'N/A'
-
-        conn.close()
 
         db_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'stock_data.db')
         if os.path.exists(db_path):
@@ -37,18 +34,21 @@ def get_stats():
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    finally:
+        conn.close()
 
 @bp.route('/list', methods=['GET'])
 def get_cache_list():
     """获取已缓存股票列表"""
+    conn = get_db_connection()
     try:
-        conn = get_db_connection()
         cursor = conn.cursor()
         stocks = cursor.execute('SELECT * FROM stock_cache ORDER BY last_update DESC').fetchall()
-        conn.close()
         return jsonify([dict(s) for s in stocks])
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    finally:
+        conn.close()
 
 @bp.route('/sync', methods=['POST'])
 def sync_stock():
@@ -62,8 +62,8 @@ def sync_stock():
     if not code:
         return jsonify({'error': '股票代码不能为空'}), 400
 
+    conn = get_db_connection()
     try:
-        conn = get_db_connection()
         cursor = conn.cursor()
 
         existing = cursor.execute('SELECT * FROM stock_cache WHERE code = ?', (code,)).fetchone()
@@ -73,7 +73,6 @@ def sync_stock():
             if last_update:
                 days_since = (datetime.now() - datetime.fromisoformat(last_update)).days
                 if days_since <= 30:
-                    conn.close()
                     return jsonify({
                         'status': 'skipped',
                         'reason': 'data_fresh',
@@ -95,32 +94,25 @@ def sync_stock():
         klines = fetch_from_akshare(code, start, end)
 
         if not klines:
-            conn.close()
             return jsonify({'error': '获取数据失败'}), 500
 
         if strategy == 'overwrite':
             cursor.execute('DELETE FROM klines WHERE code = ?', (code,))
 
-        try:
-            for kline in klines:
-                cursor.execute('''
-                    INSERT OR REPLACE INTO klines (code, date, open, high, low, close, volume, last_update)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (code, kline['date'], kline['open'], kline['high'], kline['low'],
-                      kline['close'], kline['volume'], datetime.now().isoformat()))
-
-            dates = [k['date'] for k in klines]
+        for kline in klines:
             cursor.execute('''
-                INSERT OR REPLACE INTO stock_cache (code, name, start_date, end_date, record_count, last_update)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', (code, name, min(dates), max(dates), len(klines), datetime.now().isoformat()))
+                INSERT OR REPLACE INTO klines (code, date, open, high, low, close, volume, last_update)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (code, kline['date'], kline['open'], kline['high'], kline['low'],
+                  kline['close'], kline['volume'], datetime.now().isoformat()))
 
-            conn.commit()
-        except Exception as e:
-            conn.rollback()
-            raise e
-        finally:
-            conn.close()
+        dates = [k['date'] for k in klines]
+        cursor.execute('''
+            INSERT OR REPLACE INTO stock_cache (code, name, start_date, end_date, record_count, last_update)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (code, name, min(dates), max(dates), len(klines), datetime.now().isoformat()))
+
+        conn.commit()
 
         return jsonify({
             'status': 'success',
@@ -128,7 +120,10 @@ def sync_stock():
             'date_range': f"{min(dates)} ~ {max(dates)}"
         })
     except Exception as e:
+        conn.rollback()
         return jsonify({'error': str(e)}), 500
+    finally:
+        conn.close()
 
 @bp.route('/delete', methods=['DELETE'])
 def delete_cache():
@@ -138,28 +133,29 @@ def delete_cache():
     if not code:
         return jsonify({'error': '股票代码不能为空'}), 400
 
+    conn = get_db_connection()
     try:
-        conn = get_db_connection()
         cursor = conn.cursor()
 
         cursor.execute('DELETE FROM klines WHERE code = ?', (code,))
         cursor.execute('DELETE FROM stock_cache WHERE code = ?', (code,))
 
         conn.commit()
-        conn.close()
 
         return jsonify({'status': 'success', 'message': f'已删除 {code} 的缓存数据'})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    finally:
+        conn.close()
 
 @bp.route('/batch-delete', methods=['DELETE'])
 def batch_delete():
     """批量删除过期数据"""
     days = request.args.get('days', 365, type=int)
 
+    cutoff = (datetime.now() - timedelta(days=days)).isoformat()
+    conn = get_db_connection()
     try:
-        cutoff = (datetime.now() - timedelta(days=days)).isoformat()
-        conn = get_db_connection()
         cursor = conn.cursor()
 
         old_stocks = cursor.execute(
@@ -167,13 +163,15 @@ def batch_delete():
         ).fetchall()
 
         deleted_count = 0
-        for row in old_stocks:
-            cursor.execute('DELETE FROM klines WHERE code = ?', (row['code'],))
-            cursor.execute('DELETE FROM stock_cache WHERE code = ?', (row['code'],))
-            deleted_count += 1
-
-        conn.commit()
-        conn.close()
+        try:
+            for row in old_stocks:
+                cursor.execute('DELETE FROM klines WHERE code = ?', (row['code'],))
+                cursor.execute('DELETE FROM stock_cache WHERE code = ?', (row['code'],))
+                deleted_count += 1
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            raise e
 
         return jsonify({
             'status': 'success',
@@ -182,3 +180,5 @@ def batch_delete():
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    finally:
+        conn.close()
