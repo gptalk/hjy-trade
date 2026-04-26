@@ -50,12 +50,8 @@ def search_stocks():
         stocks = A_STOCK_LIST[:20]
     return jsonify(stocks[:20])
 
-@bp.route('/kline/<code>')
-def get_kline(code):
-    """获取K线数据"""
-    start = request.args.get('start', '2020-01-01')
-    end = request.args.get('end', '2024-12-31')
-
+def fetch_kline_data(code, start='2020-01-01', end='2024-12-31'):
+    """获取K线数据（不含Flask上下文）"""
     try:
         # A股: 上交所用.SS, 深交所用.SZ
         if code.startswith('6'):
@@ -66,7 +62,7 @@ def get_kline(code):
         df = ticker.history(start=start, end=end)
 
         if df.empty:
-            return jsonify([])
+            return []
 
         # 计算技术指标
         df = calculate_indicators(df)
@@ -95,6 +91,18 @@ def get_kline(code):
                 'BB_middle': float(row['BB_middle']) if pd.notna(row['BB_middle']) else None,
                 'BB_lower': float(row['BB_lower']) if pd.notna(row['BB_lower']) else None,
             })
+        return klines
+    except Exception as e:
+        raise e
+
+@bp.route('/kline/<code>')
+def get_kline(code):
+    """获取K线数据"""
+    start = request.args.get('start', '2020-01-01')
+    end = request.args.get('end', '2024-12-31')
+
+    try:
+        klines = fetch_kline_data(code, start, end)
         return jsonify(klines)
     except Exception as e:
         return jsonify({'error': str(e)}), 500

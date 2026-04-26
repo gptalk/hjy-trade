@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import HomePage from './pages/HomePage';
 import WatchlistPage from './pages/WatchlistPage';
+import BacktestRecords from './pages/BacktestRecords';
+import DiagnosisPage from './pages/DiagnosisPage';
 
 function App() {
   const [page, setPage] = useState('home');
@@ -44,6 +46,8 @@ function App() {
       <main>
         {page === 'home' && <HomePage />}
         {page === 'watchlist' && <WatchlistPage />}
+        {page === 'records' && <BacktestRecords />}
+        {page === 'diagnosis' && <DiagnosisPage />}
       </main>
     </div>
   );

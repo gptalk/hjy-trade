@@ -1,4 +1,5 @@
 import sqlite3
+import json
 from dataclasses import dataclass
 from datetime import datetime
 from typing import List
@@ -119,5 +120,45 @@ def init_db():
     conn.commit()
     conn.close()
 
+def init_default_strategies():
+    """初始化默认策略"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # 检查是否已有策略
+    existing = cursor.execute('SELECT COUNT(*) FROM strategies').fetchone()[0]
+    if existing > 0:
+        conn.close()
+        return
+
+    # 创建默认策略
+    default_strategies = [
+        {
+            'name': '均线交叉策略',
+            'description': '使用MA5和MA20的黄金交叉/死叉进行买卖',
+            'conditions': {'buy': 'MA5 > MA20', 'sell': 'MA5 < MA20'}
+        },
+        {
+            'name': 'MACD策略',
+            'description': '使用MACD金叉死叉信号',
+            'conditions': {'buy': 'MACD > MACD_signal', 'sell': 'MACD < MACD_signal'}
+        },
+        {
+            'name': 'RSI超卖策略',
+            'description': 'RSI低于30买入，高于70卖出',
+            'conditions': {'buy': 'RSI6 < 30', 'sell': 'RSI6 > 70'}
+        }
+    ]
+
+    for strategy in default_strategies:
+        cursor.execute(
+            'INSERT INTO strategies (name, description, conditions) VALUES (?, ?, ?)',
+            (strategy['name'], strategy['description'], json.dumps(strategy['conditions']))
+        )
+
+    conn.commit()
+    conn.close()
+
 # 初始化数据库
 init_db()
+init_default_strategies()
