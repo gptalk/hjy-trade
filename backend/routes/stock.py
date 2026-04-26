@@ -98,6 +98,27 @@ def fetch_kline_data(code, start='2020-01-01', end='2024-12-31'):
                             'close': float(row['close']),
                             'volume': int(row['volume']) if row['volume'] else 0,
                         })
+
+                    # Data from cache - calculate indicators on the fly
+                    df_cache = pd.DataFrame(klines)
+                    df_cache = calculate_indicators(df_cache)
+
+                    # Update klines with indicators
+                    for i, row in df_cache.iterrows():
+                        klines[i]['MA5'] = float(row['MA5']) if pd.notna(row['MA5']) else None
+                        klines[i]['MA10'] = float(row['MA10']) if pd.notna(row['MA10']) else None
+                        klines[i]['MA20'] = float(row['MA20']) if pd.notna(row['MA20']) else None
+                        klines[i]['MA30'] = float(row['MA30']) if pd.notna(row['MA30']) else None
+                        klines[i]['EMA12'] = float(row['EMA12']) if pd.notna(row['EMA12']) else None
+                        klines[i]['EMA26'] = float(row['EMA26']) if pd.notna(row['EMA26']) else None
+                        klines[i]['MACD'] = float(row['MACD']) if pd.notna(row['MACD']) else None
+                        klines[i]['MACD_signal'] = float(row['MACD_signal']) if pd.notna(row['MACD_signal']) else None
+                        klines[i]['RSI6'] = float(row['RSI6']) if pd.notna(row['RSI6']) else None
+                        klines[i]['RSI12'] = float(row['RSI12']) if pd.notna(row['RSI12']) else None
+                        klines[i]['BOLL_mid'] = float(row['BOLL_mid']) if pd.notna(row['BOLL_mid']) else None
+                        klines[i]['BOLL_upper'] = float(row['BOLL_upper']) if pd.notna(row['BOLL_upper']) else None
+                        klines[i]['BOLL_lower'] = float(row['BOLL_lower']) if pd.notna(row['BOLL_lower']) else None
+
                     return klines
 
     except Exception as e:
