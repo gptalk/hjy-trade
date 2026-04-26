@@ -67,6 +67,13 @@ const HomePage = () => {
       const newStocks = [...selectedStocks, stock];
       setSelectedStocks(newStocks);
       setActiveStock(stock.code);
+
+      // 添加到自选股（默认分组）
+      fetch('/api/watchlist/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ group_name: '默认', stock_code: stock.code })
+      }).catch(err => console.error('Failed to add to watchlist:', err));
     }
   };
 
