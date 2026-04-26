@@ -1,6 +1,5 @@
 flask==3.0.0
 flask-cors==4.0.0
 pandas==2.2.0
-pandas-ta
-yfinance==0.2.35
-sqlite-utils==3.35
+yfinance
+sqlite-utils
