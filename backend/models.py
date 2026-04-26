@@ -80,6 +80,27 @@ def init_db():
         )
     ''')
 
+    # stock_cache 表：跟踪已缓存股票信息
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS stock_cache (
+            code TEXT PRIMARY KEY,
+            name TEXT,
+            start_date TEXT,
+            end_date TEXT,
+            record_count INTEGER DEFAULT 0,
+            last_update TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    # 为 klines 表添加 last_update 字段（如果不存在）
+    try:
+        cursor.execute('ALTER TABLE klines ADD COLUMN last_update TEXT DEFAULT CURRENT_TIMESTAMP')
+    except:
+        pass  # 列已存在
+
+    # 创建索引加速查询
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_klines_code_date ON klines(code, date)')
+
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS strategies (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
