@@ -4,6 +4,7 @@ import pandas as pd
 import sys
 import os
 sys.path.append('..')
+from models import get_db_connection
 
 # 清除代理设置
 for k in list(os.environ.keys()):
@@ -63,7 +64,46 @@ def get_ticker_prefix(code):
         return f'sz{code}'
 
 def fetch_kline_data(code, start='2020-01-01', end='2024-12-31'):
-    """获取K线数据（不含Flask上下文）"""
+    """获取K线数据（本地缓存优先）"""
+
+    # 1. 尝试从本地数据库读取
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        rows = cursor.execute('''
+            SELECT code, date, open, high, low, close, volume
+            FROM klines
+            WHERE code = ? AND date >= ? AND date <= ?
+            ORDER BY date ASC
+        ''', (code, start, end)).fetchall()
+
+        conn.close()
+
+        if rows and len(rows) > 0:
+            # 检查数据是否足够新（30天内）
+            last_date = rows[-1]['date'] if rows else None
+            if last_date:
+                from datetime import datetime as dt
+                days_since = (dt.now() - dt.fromisoformat(last_date)).days
+                if days_since <= 30:
+                    # 数据足够新，直接返回
+                    klines = []
+                    for row in rows:
+                        klines.append({
+                            'date': row['date'],
+                            'open': float(row['open']),
+                            'high': float(row['high']),
+                            'low': float(row['low']),
+                            'close': float(row['close']),
+                            'volume': int(row['volume']) if row['volume'] else 0,
+                        })
+                    return klines
+
+    except Exception as e:
+        pass  # 继续尝试从网络获取
+
+    # 2. 从网络获取数据
     try:
         ticker = get_ticker_prefix(code)
         df = ak.stock_zh_a_daily(symbol=ticker, adjust='qfq')
