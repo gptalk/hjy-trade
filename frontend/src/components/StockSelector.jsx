@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 const StockSelector = ({ onSelect }) => {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
-  const [selectedStock, setSelectedStock] = useState(null);
+  const [showDropdown, setShowDropdown] = useState(false);
 
   const search = async () => {
     if (!query) return;
@@ -11,43 +11,52 @@ const StockSelector = ({ onSelect }) => {
       const res = await fetch(`/api/stock/search?q=${query}`);
       const data = await res.json();
       setResults(data);
+      setShowDropdown(true);
     } catch (err) {
       console.error('Search error:', err);
     }
   };
 
-  const handleSelect = (e) => {
-    const code = e.target.value;
-    if (code) {
-      const stock = results.find(s => s.code === code);
-      setSelectedStock(stock);
-      onSelect(stock);
-    }
+  const handleSelect = (stock) => {
+    setQuery('');
+    setShowDropdown(false);
+    onSelect({ ...stock, market: 'A股' });
   };
 
   return (
-    <div className="flex gap-2 items-center">
+    <div className="relative flex gap-2">
       <input
         value={query}
-        onChange={e => setQuery(e.target.value)}
-        placeholder="输入股票代码或名称"
-        className="px-3 py-2 border rounded"
+        onChange={e => {
+          setQuery(e.target.value);
+          if (e.target.value.length >= 2) {
+            search();
+          }
+        }}
+        placeholder="输入代码"
+        className="w-32 px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white text-sm"
         onKeyDown={e => e.key === 'Enter' && search()}
       />
       <button
         onClick={search}
-        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+        className="px-3 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-500"
       >
-        搜索
+        +
       </button>
-      <select onChange={handleSelect} className="px-3 py-2 border rounded">
-        <option value="">选择股票</option>
-        {results.map(s => (
-          <option key={s.code} value={s.code}>
-            {s.code} - {s.name}
-          </option>
-        ))}
-      </select>
+
+      {showDropdown && results.length > 0 && (
+        <div className="absolute top-full left-0 mt-1 bg-gray-700 border border-gray-600 rounded shadow-lg z-50 max-h-60 overflow-y-auto">
+          {results.map(s => (
+            <div
+              key={s.code}
+              onClick={() => handleSelect(s)}
+              className="px-3 py-2 hover:bg-gray-600 cursor-pointer text-sm text-white"
+            >
+              {s.code} {s.name}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

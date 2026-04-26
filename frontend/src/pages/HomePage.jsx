@@ -6,14 +6,13 @@ import StrategyEditor from '../components/StrategyEditor';
 import BacktestResult from '../components/BacktestResult';
 
 const PERIODS = [
-  { value: '1', label: '1分' },
-  { value: '5', label: '5分' },
-  { value: '15', label: '15分' },
-  { value: '30', label: '30分' },
-  { value: '60', label: '60分' },
   { value: 'D', label: '日K' },
   { value: 'W', label: '周K' },
   { value: 'M', label: '月K' },
+  { value: '5', label: '5分钟' },
+  { value: '15', label: '15分钟' },
+  { value: '30', label: '30分钟' },
+  { value: '60', label: '60分钟' },
 ];
 
 const getDefaultEndDate = () => {
@@ -28,7 +27,8 @@ const getDefaultStartDate = () => {
 };
 
 const HomePage = () => {
-  const [stock, setStock] = useState({ code: '000001', name: '平安银行' });
+  const [selectedStocks, setSelectedStocks] = useState([{ code: '000001', name: '平安银行', market: 'A股' }]);
+  const [activeStock, setActiveStock] = useState('000001');
   const [klineData, setKlineData] = useState([]);
   const [indicators, setIndicators] = useState(['MA']);
   const [loading, setLoading] = useState(false);
@@ -55,17 +55,33 @@ const HomePage = () => {
   };
 
   useEffect(() => {
-    loadKlineData(stock.code, startDate, endDate);
-  }, [stock.code]);
+    if (activeStock) {
+      loadKlineData(activeStock, startDate, endDate);
+    }
+  }, [activeStock, startDate, endDate]);
 
-  const handleStockSelect = (s) => {
-    if (s) {
-      setStock(s);
+  const handleAddStock = (stock) => {
+    if (stock && !selectedStocks.find(s => s.code === stock.code)) {
+      const newStocks = [...selectedStocks, stock];
+      setSelectedStocks(newStocks);
+      setActiveStock(stock.code);
     }
   };
 
+  const handleRemoveStock = (code) => {
+    const newStocks = selectedStocks.filter(s => s.code !== code);
+    setSelectedStocks(newStocks);
+    if (activeStock === code && newStocks.length > 0) {
+      setActiveStock(newStocks[0].code);
+    }
+  };
+
+  const handleStockClick = (code) => {
+    setActiveStock(code);
+  };
+
   const handleQuery = () => {
-    loadKlineData(stock.code, startDate, endDate);
+    loadKlineData(activeStock, startDate, endDate);
   };
 
   const handleBacktest = async () => {
@@ -74,7 +90,7 @@ const HomePage = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          code: stock.code,
+          code: activeStock,
           strategy,
           start_date: startDate,
           end_date: endDate
@@ -88,28 +104,59 @@ const HomePage = () => {
   };
 
   return (
-    <div className="p-4">
-      <div className="mb-4 flex justify-between items-center">
-        <h1 className="text-2xl font-bold">K线回测</h1>
-        <div className="flex gap-2 items-center">
-          <span className="text-gray-600">当前: {stock.code} {stock.name}</span>
-          <button
-            onClick={() => setShowStrategyEditor(!showStrategyEditor)}
-            className="px-3 py-1 text-sm bg-gray-200 rounded hover:bg-gray-300"
-          >
-            {showStrategyEditor ? '收起策略' : '编辑策略'}
-          </button>
-          <button
-            onClick={handleBacktest}
-            className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
-          >
-            运行回测
-          </button>
+    <div className="min-h-screen bg-gray-900 text-white">
+      {/* 顶部导航 */}
+      <div className="bg-gray-800 border-b border-gray-700 px-4 py-3">
+        <div className="flex justify-between items-center">
+          <h1 className="text-xl font-bold text-white">K线回测</h1>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowStrategyEditor(!showStrategyEditor)}
+              className="px-3 py-1 text-sm bg-gray-700 hover:bg-gray-600 rounded text-white"
+            >
+              {showStrategyEditor ? '收起策略' : '编辑策略'}
+            </button>
+            <button
+              onClick={handleBacktest}
+              className="px-3 py-1 text-sm bg-blue-600 hover:bg-blue-500 rounded text-white"
+            >
+              策略回测
+            </button>
+          </div>
         </div>
       </div>
 
+      {/* 已选股票标签栏 */}
+      <div className="bg-gray-800 px-4 py-2 border-b border-gray-700">
+        <div className="flex flex-wrap gap-2">
+          {selectedStocks.map((s) => (
+            <span
+              key={s.code}
+              onClick={() => handleStockClick(s.code)}
+              className={`px-3 py-1 rounded cursor-pointer flex items-center gap-1 text-sm ${
+                activeStock === s.code
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              }`}
+            >
+              {s.code} {s.market}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRemoveStock(s.code);
+                }}
+                className="ml-1 text-gray-400 hover:text-white font-bold"
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* 策略编辑 */}
       {showStrategyEditor && (
-        <div className="mb-4">
+        <div className="p-4 bg-gray-800 border-b border-gray-700">
           <StrategyEditor
             strategy={strategy}
             onSave={(s) => setStrategy(s)}
@@ -118,67 +165,96 @@ const HomePage = () => {
         </div>
       )}
 
-      {backtestResult && <BacktestResult result={backtestResult} />}
+      {/* 回测结果 */}
+      {backtestResult && (
+        <div className="p-4 bg-gray-800 border-b border-gray-700">
+          <BacktestResult result={backtestResult} />
+        </div>
+      )}
 
       {/* 查询条件区域 */}
-      <div className="mb-4 p-4 bg-gray-50 rounded flex flex-wrap gap-4 items-end">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">股票</label>
-          <StockSelector onSelect={handleStockSelect} />
-        </div>
+      <div className="bg-gray-800 px-4 py-3 border-b border-gray-700">
+        <div className="flex flex-wrap gap-4 items-end">
+          <div className="flex-1 min-w-[200px]">
+            <label className="block text-xs text-gray-400 mb-1">股票</label>
+            <StockSelector onSelect={handleAddStock} />
+          </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">周期</label>
-          <select
-            value={period}
-            onChange={(e) => setPeriod(e.target.value)}
-            className="px-3 py-2 border rounded"
+          <div>
+            <label className="block text-xs text-gray-400 mb-1">市场</label>
+            <select className="px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white text-sm">
+              <option value="A股">A股</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs text-gray-400 mb-1">周期</label>
+            <select
+              value={period}
+              onChange={(e) => setPeriod(e.target.value)}
+              className="px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white text-sm"
+            >
+              {PERIODS.map((p) => (
+                <option key={p.value} value={p.value}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs text-gray-400 mb-1">开始日期</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white text-sm"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs text-gray-400 mb-1">结束日期</label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white text-sm"
+            />
+          </div>
+
+          <button
+            onClick={handleQuery}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-sm font-medium"
           >
-            {PERIODS.map((p) => (
-              <option key={p.value} value={p.value}>
-                {p.label}
-              </option>
-            ))}
-          </select>
-        </div>
+            查询
+          </button>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">开始日期</label>
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="px-3 py-2 border rounded"
-          />
+          <button className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded text-sm font-medium">
+            查看A股列表
+          </button>
         </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">结束日期</label>
-          <input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="px-3 py-2 border rounded"
-          />
-        </div>
-
-        <button
-          onClick={handleQuery}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
-          查询
-        </button>
       </div>
 
-      <div className="mb-4">
-        <IndicatorPanel selected={indicators} onChange={setIndicators} />
+      {/* 技术指标栏 */}
+      <div className="bg-gray-800 px-4 py-2 border-b border-gray-700">
+        <div className="flex gap-2">
+          <IndicatorPanel selected={indicators} onChange={setIndicators} />
+        </div>
       </div>
 
-      {loading ? (
-        <div className="text-center py-10">加载中...</div>
-      ) : (
-        <KLineChart data={klineData} indicators={indicators} />
-      )}
+      {/* K线图区域 */}
+      <div className="p-4">
+        {loading ? (
+          <div className="text-center py-20 text-gray-400">加载中...</div>
+        ) : (
+          <KLineChart data={klineData} indicators={indicators} />
+        )}
+      </div>
+
+      {/* 底部版权 */}
+      <div className="text-center text-xs text-gray-500 py-4 border-t border-gray-800">
+        免责声明：本平台仅供技术研究与策略回测参考，不构成任何投资建议
+      </div>
     </div>
   );
 };

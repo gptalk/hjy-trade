@@ -24,10 +24,10 @@ const IndicatorPanel = ({ selected = [], onChange }) => {
         <button
           key={ind.key}
           onClick={() => toggleIndicator(ind.key)}
-          className={`px-3 py-1 rounded text-sm ${
+          className={`px-3 py-1 rounded text-xs font-medium ${
             selected.includes(ind.key)
-              ? 'bg-blue-500 text-white'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              ? 'bg-blue-600 text-white'
+              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
           }`}
         >
           {ind.label}
