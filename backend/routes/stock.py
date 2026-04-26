@@ -1,9 +1,14 @@
 from flask import Blueprint, jsonify, request
-import yfinance as yf
+import akshare as ak
 import pandas as pd
 import sys
+import os
 sys.path.append('..')
-from services.indicator import calculate_indicators
+
+# 清除代理设置
+for k in list(os.environ.keys()):
+    if 'proxy' in k.lower():
+        del os.environ[k]
 
 bp = Blueprint('stock', __name__, url_prefix='/api/stock')
 
@@ -50,16 +55,27 @@ def search_stocks():
         stocks = A_STOCK_LIST[:20]
     return jsonify(stocks[:20])
 
+def get_ticker_prefix(code):
+    """根据股票代码返回akshare需要的前缀"""
+    if code.startswith('6'):
+        return f'sh{code}'
+    else:
+        return f'sz{code}'
+
 def fetch_kline_data(code, start='2020-01-01', end='2024-12-31'):
     """获取K线数据（不含Flask上下文）"""
     try:
-        # A股: 上交所用.SS, 深交所用.SZ
-        if code.startswith('6'):
-            ticker = yf.Ticker(f"{code}.SS")
-        else:
-            ticker = yf.Ticker(f"{code}.SZ")
+        ticker = get_ticker_prefix(code)
+        df = ak.stock_zh_a_daily(symbol=ticker, adjust='qfq')
 
-        df = ticker.history(start=start, end=end)
+        if df.empty:
+            return []
+
+        # 过滤日期范围
+        df['date'] = pd.to_datetime(df['date'])
+        start_dt = pd.to_datetime(start)
+        end_dt = pd.to_datetime(end)
+        df = df[(df['date'] >= start_dt) & (df['date'] <= end_dt)]
 
         if df.empty:
             return []
@@ -69,38 +85,66 @@ def fetch_kline_data(code, start='2020-01-01', end='2024-12-31'):
 
         klines = []
         for idx, row in df.iterrows():
-            # 处理列名大小写
-            open_val = float(row.get('Open') or row.get('open', 0))
-            high_val = float(row.get('High') or row.get('high', 0))
-            low_val = float(row.get('Low') or row.get('low', 0))
-            close_val = float(row.get('Close') or row.get('close', 0))
-            volume_val = int(row.get('Volume') or row.get('volume', 0))
+            kline = {
+                'date': row['date'].strftime('%Y-%m-%d'),
+                'open': float(row['open']),
+                'high': float(row['high']),
+                'low': float(row['low']),
+                'close': float(row['close']),
+                'volume': int(row['volume']) if pd.notna(row['volume']) else 0,
+            }
 
-            klines.append({
-                'date': idx.strftime('%Y-%m-%d'),
-                'open': open_val,
-                'high': high_val,
-                'low': low_val,
-                'close': close_val,
-                'volume': volume_val,
-                'MA5': float(row['MA5']) if pd.notna(row['MA5']) else None,
-                'MA10': float(row['MA10']) if pd.notna(row['MA10']) else None,
-                'MA20': float(row['MA20']) if pd.notna(row['MA20']) else None,
-                'MACD': float(row['MACD']) if pd.notna(row['MACD']) else None,
-                'MACD_signal': float(row['MACD_signal']) if pd.notna(row['MACD_signal']) else None,
-                'MACD_hist': float(row['MACD_hist']) if pd.notna(row['MACD_hist']) else None,
-                'KDJ_K': float(row['KDJ_K']) if pd.notna(row['KDJ_K']) else None,
-                'KDJ_D': float(row['KDJ_D']) if pd.notna(row['KDJ_D']) else None,
-                'KDJ_J': float(row['KDJ_J']) if pd.notna(row['KDJ_J']) else None,
-                'RSI6': float(row['RSI6']) if pd.notna(row['RSI6']) else None,
-                'RSI12': float(row['RSI12']) if pd.notna(row['RSI12']) else None,
-                'BB_upper': float(row['BB_upper']) if pd.notna(row['BB_upper']) else None,
-                'BB_middle': float(row['BB_middle']) if pd.notna(row['BB_middle']) else None,
-                'BB_lower': float(row['BB_lower']) if pd.notna(row['BB_lower']) else None,
-            })
+            # 添加指标
+            for col in ['MA5', 'MA10', 'MA20', 'MA30', 'EMA12', 'EMA26', 'MACD', 'MACD_signal', 'RSI6', 'RSI12', 'BOLL_mid', 'BOLL_upper', 'BOLL_lower']:
+                if col in df.columns:
+                    val = row.get(col)
+                    kline[col] = float(val) if pd.notna(val) else None
+
+            klines.append(kline)
+
         return klines
     except Exception as e:
         raise e
+
+def calculate_indicators(df):
+    """计算技术指标"""
+    close = df['close'].astype(float)
+
+    # MA
+    df['MA5'] = close.rolling(window=5).mean()
+    df['MA10'] = close.rolling(window=10).mean()
+    df['MA20'] = close.rolling(window=20).mean()
+    df['MA30'] = close.rolling(window=30).mean()
+
+    # EMA
+    df['EMA12'] = close.ewm(span=12, adjust=False).mean()
+    df['EMA26'] = close.ewm(span=26, adjust=False).mean()
+
+    # MACD
+    df['MACD'] = df['EMA12'] - df['EMA26']
+    df['MACD_signal'] = df['MACD'].ewm(span=9, adjust=False).mean()
+    df['MACD_hist'] = df['MACD'] - df['MACD_signal']
+
+    # RSI
+    delta = close.diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=6).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=6).mean()
+    rs = gain / loss
+    df['RSI6'] = 100 - (100 / (1 + rs))
+
+    # RSI12
+    gain12 = (delta.where(delta > 0, 0)).rolling(window=12).mean()
+    loss12 = (-delta.where(delta < 0, 0)).rolling(window=12).mean()
+    rs12 = gain12 / loss12
+    df['RSI12'] = 100 - (100 / (1 + rs12))
+
+    # BOLL
+    df['BOLL_mid'] = close.rolling(window=20).mean()
+    df['BOLL_std'] = close.rolling(window=20).std()
+    df['BOLL_upper'] = df['BOLL_mid'] + 2 * df['BOLL_std']
+    df['BOLL_lower'] = df['BOLL_mid'] - 2 * df['BOLL_std']
+
+    return df
 
 @bp.route('/kline/<code>')
 def get_kline(code):

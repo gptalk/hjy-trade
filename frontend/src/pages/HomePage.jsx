@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import KLineChart from '../components/KLineChart';
 import IndicatorPanel from '../components/IndicatorPanel';
 import StockSelector from '../components/StockSelector';
+import StockListModal from '../components/StockListModal';
 import StrategyEditor from '../components/StrategyEditor';
 import BacktestResult from '../components/BacktestResult';
 
@@ -35,6 +36,7 @@ const HomePage = () => {
   const [strategy, setStrategy] = useState({ name: '均线交叉策略', description: '经典双均线策略', conditions: { buy: 'MA5 > MA20', sell: 'MA5 < MA20' } });
   const [backtestResult, setBacktestResult] = useState(null);
   const [showStrategyEditor, setShowStrategyEditor] = useState(false);
+  const [showStockModal, setShowStockModal] = useState(false);
 
   // 查询条件状态
   const [period, setPeriod] = useState('D');
@@ -229,7 +231,10 @@ const HomePage = () => {
             查询
           </button>
 
-          <button className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded text-sm font-medium">
+          <button
+            onClick={() => setShowStockModal(true)}
+            className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded text-sm font-medium"
+          >
             查看A股列表
           </button>
         </div>
@@ -242,12 +247,21 @@ const HomePage = () => {
         </div>
       </div>
 
+      {/* 股票列表弹窗 */}
+      {showStockModal && (
+        <StockListModal
+          isOpen={showStockModal}
+          onClose={() => setShowStockModal(false)}
+          onSelect={handleAddStock}
+        />
+      )}
+
       {/* K线图区域 */}
       <div className="p-4">
         {loading ? (
           <div className="text-center py-20 text-gray-400">加载中...</div>
         ) : (
-          <KLineChart data={klineData} indicators={indicators} />
+          <KLineChart data={klineData} indicators={indicators} trades={backtestResult?.trades || []} />
         )}
       </div>
 
