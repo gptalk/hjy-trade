@@ -4,6 +4,7 @@ import { stockInfoAPI } from '../api'
 const SOURCE_LABELS = {
   baostock: { text: 'baostock', color: '#1890ff' },
   akshare: { text: 'AKShare', color: '#52c41a' },
+  tushare: { text: 'Tushare', color: '#fa8c16' },
 }
 
 function SourceBadge({ source }) {
@@ -20,7 +21,7 @@ function SourceBadge({ source }) {
 
 export default function StockInfo() {
   const [data, setData] = useState({ total: 0, data: [] })
-  const [sources, setSources] = useState({ baostock: {}, akshare: {} })
+  const [sources, setSources] = useState({ baostock: {}, akshare: {}, tushare: {} })
   const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [search, setSearch] = useState('')
@@ -100,6 +101,9 @@ export default function StockInfo() {
         </span>
         <span style={{ color: sources.akshare?.available ? '#52c41a' : '#ff4d4f' }}>
           ● AKShare {sources.akshare?.available ? '可用' : '不可用'}
+        </span>
+        <span style={{ color: sources.tushare?.available ? '#52c41a' : '#ff4d4f' }}>
+          ● Tushare {sources.tushare?.available ? '可用' : '不可用'}
         </span>
         <span>股票数量：{sources.stock_count || 0}</span>
         <span>最后刷新：{sources.last_full_refresh || '从未全量刷新'}</span>
