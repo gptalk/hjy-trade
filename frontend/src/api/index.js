@@ -38,4 +38,12 @@ export const stockInfoAPI = {
   refresh: () => api.post('/data/stock-info/refresh'),
 }
 
+// 交易日历API
+export const calendarAPI = {
+  getSources: () => api.get('/data/trading-calendar/sources'),
+  getList: (year, month) => api.get(`/data/trading-calendar/list?year=${year}&month=${month}`),
+  isTradingDay: (date) => api.get(`/data/trading-calendar/is-trading-day?date=${date}`),
+  refresh: () => api.post('/data/trading-calendar/refresh'),
+}
+
 export default api

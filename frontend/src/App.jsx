@@ -6,6 +6,7 @@ import BacktestRecords from './views/BacktestRecords'
 import DiagnosisRecords from './views/DiagnosisRecords'
 import AIDiagnosis from './views/AIDiagnosis'
 import StockInfo from './views/StockInfo'
+import TradingCalendar from './views/TradingCalendar'
 
 function Navigation() {
   const location = useLocation()
@@ -17,6 +18,7 @@ function Navigation() {
     if (path === '/records' && page === 'records') return 'active'
     if (path === '/diagnosis' && page === 'diagnosis') return 'active'
     if (path === '/data/stock-info' && page === 'data-stock') return 'active'
+    if (path === '/data/trading-calendar' && page === 'data-calendar') return 'active'
     return ''
   }
 
@@ -28,6 +30,7 @@ function Navigation() {
       <Link to="/records" className={page === 'records' ? 'active' : ''} onClick={() => setPage('records')}>回测记录</Link>
       <Link to="/diagnosis" className={page === 'diagnosis' ? 'active' : ''} onClick={() => setPage('diagnosis')}>AI问诊</Link>
       <Link to="/data/stock-info" className={page === 'data-stock' ? 'active' : ''} onClick={() => setPage('data-stock')}>数据管理</Link>
+      <Link to="/data/trading-calendar" className={page === 'data-calendar' ? 'active' : ''} onClick={() => setPage('data-calendar')}>交易日历</Link>
     </nav>
   )
 }
@@ -43,6 +46,7 @@ function App() {
           <Route path="/records" element={<BacktestRecords />} />
           <Route path="/diagnosis" element={<AIDiagnosis />} />
           <Route path="/data/stock-info" element={<StockInfo />} />
+          <Route path="/data/trading-calendar" element={<TradingCalendar />} />
         </Routes>
       </div>
     </BrowserRouter>
