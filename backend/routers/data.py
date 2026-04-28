@@ -8,6 +8,14 @@ from ..services.stock_info_service import (
     refresh_stock_info,
     init_stock_info,
 )
+from datetime import datetime
+from ..services.trading_calendar_service import (
+    init_trading_calendar,
+    refresh_trading_calendar,
+    get_calendar_by_year_month,
+    check_is_trading_day,
+    get_sources_status as get_calendar_sources_status,
+)
 
 router = APIRouter()
 
@@ -51,3 +59,42 @@ async def refresh_stock_info_bg(background_tasks: BackgroundTasks):
     t = threading.Thread(target=_do_refresh, daemon=True)
     t.start()
     return {"status": "running", "message": "全量刷新任务已启动"}
+
+
+@router.get("/trading-calendar/sources")
+async def get_calendar_sources():
+    """获取交易日历数据源状态"""
+    return get_calendar_sources_status()
+
+
+@router.get("/trading-calendar/list")
+async def list_trading_days(
+    year: int = Query(default=None, ge=1990, le=2100),
+    month: int = Query(default=None, ge=1, le=12)
+):
+    """按年月查询交易日列表"""
+    if year is None:
+        year = datetime.now().year
+    if month is None:
+        month = datetime.now().month
+    return get_calendar_by_year_month(year, month)
+
+
+@router.get("/trading-calendar/is-trading-day")
+async def check_trading_day(date: str = Query(..., description="日期 YYYY-MM-DD")):
+    """判断是否为交易日"""
+    return check_is_trading_day(date)
+
+
+@router.post("/trading-calendar/refresh")
+async def refresh_calendar_bg(background_tasks: BackgroundTasks):
+    """触发全量刷新（后台任务）"""
+    import threading
+
+    def _do_refresh():
+        init_trading_calendar()
+        refresh_trading_calendar()
+
+    t = threading.Thread(target=_do_refresh, daemon=True)
+    t.start()
+    return {"status": "running", "message": "交易日历刷新任务已启动"}

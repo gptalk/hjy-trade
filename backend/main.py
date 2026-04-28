@@ -10,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from backend.routers import api_router
 from backend.data.database import init_db
 from backend.services.stock_info_service import init_stock_info
+from backend.services.trading_calendar_service import init_trading_calendar
 
 app = FastAPI(
     title="小宇量化 API",
@@ -35,6 +36,7 @@ async def startup_event():
     """应用启动时初始化数据库"""
     init_db()
     init_stock_info()
+    init_trading_calendar()
 
 
 @app.get("/")
