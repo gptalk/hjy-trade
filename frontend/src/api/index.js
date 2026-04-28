@@ -41,7 +41,7 @@ export const stockInfoAPI = {
 // 交易日历API
 export const calendarAPI = {
   getSources: () => api.get('/data/trading-calendar/sources'),
-  getList: (year, month) => api.get(`/data/trading-calendar/list?year=${year}&month=${month}`),
+  getList: (params) => api.get('/data/trading-calendar/list', { params }),
   isTradingDay: (date) => api.get(`/data/trading-calendar/is-trading-day?date=${date}`),
   refresh: () => api.post('/data/trading-calendar/refresh'),
 }

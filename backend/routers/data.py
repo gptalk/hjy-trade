@@ -12,7 +12,7 @@ from datetime import datetime
 from ..services.trading_calendar_service import (
     init_trading_calendar,
     refresh_trading_calendar,
-    get_calendar_by_year_month,
+    get_calendar_list,
     check_is_trading_day,
     get_sources_status as get_calendar_sources_status,
 )
@@ -69,15 +69,19 @@ async def get_calendar_sources():
 
 @router.get("/trading-calendar/list")
 async def list_trading_days(
-    year: int = Query(default=None, ge=1990, le=2100),
-    month: int = Query(default=None, ge=1, le=12)
+    page: int = Query(1, ge=1),
+    page_size: int = Query(100, ge=1, le=200),
+    year: Optional[int] = Query(default=None, ge=1990, le=2100),
+    month: Optional[int] = Query(default=None, ge=1, le=12),
+    exchange: str = Query("all", description="上交所/深交所/all"),
+    is_trading: Optional[int] = Query(default=None, description="0休市 1交易"),
 ):
-    """按年月查询交易日列表"""
-    if year is None:
-        year = datetime.now().year
-    if month is None:
-        month = datetime.now().month
-    return get_calendar_by_year_month(year, month)
+    """分页获取日历列表，支持按年/月/交易所/是否交易过滤"""
+    return get_calendar_list(
+        page=page, page_size=page_size,
+        year=year, month=month,
+        exchange=exchange, is_trading=is_trading
+    )
 
 
 @router.get("/trading-calendar/is-trading-day")
