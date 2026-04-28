@@ -2,16 +2,15 @@ import React, { useState, useEffect } from 'react'
 import { calendarAPI } from '../api'
 
 export default function TradingCalendar() {
+  const currentYear = new Date().getFullYear()
   const [data, setData] = useState({ total: 0, data: [] })
   const [loading, setLoading] = useState(false)
   const [sources, setSources] = useState({})
   const [page, setPage] = useState(1)
   const [pageSize] = useState(100)
-  const [year, setYear] = useState(new Date().getFullYear())
+  const [year, setYear] = useState(currentYear)
   const [month, setMonth] = useState(new Date().getMonth() + 1)
   const [isTradingFilter, setIsTradingFilter] = useState('')
-  const [checkDate, setCheckDate] = useState('')
-  const [checkResult, setCheckResult] = useState(null)
 
   const fetchSources = async () => {
     try {
@@ -51,17 +50,12 @@ export default function TradingCalendar() {
     fetchList(pg, year, month, isTradingFilter)
   }
 
-  const handleCheck = async () => {
-    if (!checkDate) return
-    try {
-      const res = await calendarAPI.isTradingDay(checkDate)
-      setCheckResult(res.data)
-    } catch (e) {
-      console.error(e)
-    }
-  }
-
   const totalPages = Math.ceil(data.total / pageSize) || 1
+
+  const yearOptions = Array.from(
+    { length: currentYear - 1989 },
+    (_, i) => currentYear - i
+  )
 
   return (
     <div style={{ padding: 24 }}>
@@ -81,7 +75,7 @@ export default function TradingCalendar() {
       <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
         <select value={year} onChange={e => setYear(Number(e.target.value))}
           style={{ padding: '6px 12px', borderRadius: 4, border: '1px solid #d9d9d9' }}>
-          {[year - 2, year - 1, year, year + 1, year + 2].map(y => (
+          {yearOptions.map(y => (
             <option key={y} value={y}>{y}年</option>
           ))}
         </select>
@@ -101,21 +95,6 @@ export default function TradingCalendar() {
           style={{ padding: '6px 16px', borderRadius: 4, border: 'none', background: '#1890ff', color: '#fff', cursor: loading ? 'not-allowed' : 'pointer' }}>
           {loading ? '加载中...' : '查询'}
         </button>
-      </div>
-
-      {/* 日期判断工具 */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 16, padding: 12, background: '#f5f5f5', borderRadius: 8 }}>
-        <input type="date" value={checkDate} onChange={e => setCheckDate(e.target.value)}
-          style={{ padding: '6px 12px', borderRadius: 4, border: '1px solid #d9d9d9' }} />
-        <button onClick={handleCheck}
-          style={{ padding: '6px 16px', borderRadius: 4, border: 'none', background: '#1890ff', color: '#fff', cursor: 'pointer' }}>
-          判断是否交易日
-        </button>
-        {checkResult && (
-          <span style={{ lineHeight: '32px', fontWeight: 'bold', color: checkResult.is_trading ? '#52c41a' : '#ff4d4f' }}>
-            {checkResult.date} → {checkResult.is_trading ? '交易' : '休市'}
-          </span>
-        )}
       </div>
 
       {/* 列表 */}
